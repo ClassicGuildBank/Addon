@@ -1,0 +1,63 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+	<Script File="main.lua"/>
+
+<Frame name="CgbFrame" parent="UIParent"  movable="true" enableMouse="true" hidden="true">
+		<Size>
+			<AbsDimension x="700" y="450" />
+		</Size>
+		<Anchors>
+			<Anchor point="CENTER" />
+		</Anchors>
+		<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+			<Color r="0" g="0" b="0" />
+			<BackgroundInsets>
+				<AbsInset left="11" right="12" top="12" bottom="11" />
+			</BackgroundInsets>
+			<TileSize>
+				<AbsValue val="32" />
+			</TileSize>
+			<EdgeSize>
+				<AbsValue val="32" />
+			</EdgeSize>
+		</Backdrop>
+		<Frames>
+			<Button name="CgbFrameButton" text="Okay" inherits="GameMenuButtonTemplate">
+				<Anchors>
+					<Anchor point="BOTTOM" relativeTo="CgbFrame" relativePoint="BOTTOM">
+						<Offset>
+							<AbsDimension x="0" y="20" />
+						</Offset>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<ScrollFrame name="CgbFrameScroll" inherits="UIPanelScrollFrameTemplate" toplevel="true">
+				<Anchors>
+			<Anchor point="TOP">
+				<Offset>
+					<AbsDimension x="0" y="-30"/>
+				</Offset>
+			</Anchor>
+				<Anchor point="BOTTOM" relativeTo="CgbFrameButton" relativePoint="BOTTOM">
+					<Offset>
+						<AbsDimension x="10" y="30"/>
+					</Offset>
+				</Anchor>
+				<Anchor point="RIGHT">
+					<Offset>
+						<AbsDimension x="-40"/>
+					</Offset>
+				</Anchor>
+			</Anchors>
+				<ScrollChild>
+					<EditBox name="CgbFrameScrollText" letters="99999" multiLine="true" autoFocus="true" enableMouse="true">
+						<Size>
+							<AbsDimension x="630" y="380"/>
+						</Size>
+						<FontString inherits="ChatFontNormal"/>
+					</EditBox>
+				</ScrollChild>
+			</ScrollFrame>
+		</Frames>
+	</Frame>
+</Ui>
