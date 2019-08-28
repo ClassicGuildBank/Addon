@@ -2,7 +2,7 @@
 ## Title: ClassicGuildBank
 ## Notes: Constructs ClassicGuildBank export strings
 ## Author: FighterDave
-## Version: 0.2
+## Version: 1.1
 
 libs\LibStub\LibStub.lua
 
