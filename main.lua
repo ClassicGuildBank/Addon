@@ -72,8 +72,8 @@ end
 
 function ClassicGuildBank:DisplayExportString(exportString)
 
-  local encoded = ClassicGuildBank:enc(exportString);
-
+  local encoded = ClassicGuildBank:encode(exportString);
+  
   CgbFrame:Show();
   CgbFrameScroll:Show()
   CgbFrameScrollText:Show()
@@ -86,48 +86,65 @@ function ClassicGuildBank:DisplayExportString(exportString)
   );
 end
 
--- bitshift functions (<<, >> equivalent)
--- shift left
-function ClassicGuildBank:lsh(value,shift)
-	return math.fmod((value*(2^shift)), 256)
+local extract = _G.bit32 and _G.bit32.extract
+if not extract then
+	if _G.bit then
+		local shl, shr, band = _G.bit.lshift, _G.bit.rshift, _G.bit.band
+		extract = function( v, from, width )
+			return band( shr( v, from ), shl( 1, width ) - 1 )
+		end
+	elseif _G._VERSION >= "Lua 5.3" then
+		extract = load[[return function( v, from, width )
+			return ( v >> from ) & ((1 << width) - 1)
+		end]]()
+	else
+		extract = function( v, from, width )
+			local w = 0
+			local flag = 2^from
+			for i = 0, width-1 do
+				local flag2 = flag + flag
+				if v % flag2 >= flag then
+					w = w + 2^i
+				end
+				flag = flag2
+			end
+			return w
+		end
+	end
 end
 
--- shift right
-function ClassicGuildBank:rsh(value,shift)
-  return math.fmod(math.floor(value/2^shift), 256)
+local char, concat = string.char, table.concat
+
+function ClassicGuildBank:makeencoder( s62, s63, spad )
+	local encoder = {}
+	for b64code, char in pairs{[0]='A','B','C','D','E','F','G','H','I','J',
+		'K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y',
+		'Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n',
+		'o','p','q','r','s','t','u','v','w','x','y','z','0','1','2',
+		'3','4','5','6','7','8','9',s62 or '+',s63 or'/',spad or'='} do
+		encoder[b64code] = char:byte()
+	end
+	return encoder
 end
 
--- return single bit (for OR)
-function ClassicGuildBank:bit(x,b)
-	return (math.fmod(x, 2^b) - math.fmod(x, 2^(b-1)) > 0)
-end
+function ClassicGuildBank:encode( str )
+	encoder = ClassicGuildBank:makeencoder()
+	local t, k, n = {}, 1, #str
+	local lastn = n % 3
+	for i = 1, n-lastn, 3 do
+		local a, b, c = str:byte( i, i+2 )
+		local v = a*0x10000 + b*0x100 + c
 
--- logic OR for number values
-function ClassicGuildBank:lor(x,y)
-	result = 0
-	for p=1,8 do result = result + (((ClassicGuildBank:bit(x,p) or ClassicGuildBank:bit(y,p)) == true) and 2^(p-1) or 0) end
-	return result
-end
-
--- function encode
--- encodes input string to base64.
-function ClassicGuildBank:enc(data)
-  -- encryption table
-  local base64chars = {[0]='A',[1]='B',[2]='C',[3]='D',[4]='E',[5]='F',[6]='G',[7]='H',[8]='I',[9]='J',[10]='K',[11]='L',[12]='M',[13]='N',[14]='O',[15]='P',[16]='Q',[17]='R',[18]='S',[19]='T',[20]='U',[21]='V',[22]='W',[23]='X',[24]='Y',[25]='Z',[26]='a',[27]='b',[28]='c',[29]='d',[30]='e',[31]='f',[32]='g',[33]='h',[34]='i',[35]='j',[36]='k',[37]='l',[38]='m',[39]='n',[40]='o',[41]='p',[42]='q',[43]='r',[44]='s',[45]='t',[46]='u',[47]='v',[48]='w',[49]='x',[50]='y',[51]='z',[52]='0',[53]='1',[54]='2',[55]='3',[56]='4',[57]='5',[58]='6',[59]='7',[60]='8',[61]='9',[62]='-',[63]='_'}
-  
-  local bytes = {}
-	local result = ""
-  for spos=0,string.len(data)-1,3 do
-    for byte=1,3 do bytes[byte] = string.byte(string.sub(data,(spos+byte))) or 0 end
-    result = string.format('%s%s%s%s%s',
-      result,
-      base64chars[ClassicGuildBank:rsh(bytes[1],2)],
-      base64chars[ClassicGuildBank:lor(ClassicGuildBank:lsh((math.fmod(bytes[1], 4)),4), ClassicGuildBank:rsh(bytes[2],4))] or "=",
-      ((string.len(data)-spos) > 1) and base64chars[ClassicGuildBank:lor(ClassicGuildBank:lsh(
-        math.fmod(bytes[2], 16)
-      ,2), ClassicGuildBank:rsh(bytes[3],6))] or "=",
-      ((string.len(data)-spos) > 2) and base64chars[(math.fmod(bytes[3], 64))] or "="
-    )
-  end
-	return result
+		t[k] = char(encoder[extract(v,18,6)], encoder[extract(v,12,6)], encoder[extract(v,6,6)], encoder[extract(v,0,6)])
+		k = k + 1
+	end
+	if lastn == 2 then
+		local a, b = str:byte( n-1, n )
+		local v = a*0x10000 + b*0x100
+		t[k] = char(encoder[extract(v,18,6)], encoder[extract(v,12,6)], encoder[extract(v,6,6)], encoder[64])
+	elseif lastn == 1 then
+		local v = str:byte( n )*0x10000
+		t[k] = char(encoder[extract(v,18,6)], encoder[extract(v,12,6)], encoder[64], encoder[64])
+	end
+	return concat( t )
 end
