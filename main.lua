@@ -8,7 +8,7 @@ function ClassicGuildBank:HandleChatCommand(input)
   local bags = ClassicGuildBank:GetBags()
   local bagItems = ClassicGuildBank:GetBagItems()
 
-  local exportString = '[' .. UnitName('player') .. '];'
+  local exportString = '[' .. UnitName('player') .. ',' .. GetMoney() .. ',' .. GetLocale() .. '];'
 
   exportString = exportString .. '['
 
@@ -56,7 +56,7 @@ function ClassicGuildBank:GetBagItems()
     for slot=1, numSlots do
       local texture, count, locked, quality, readable, lootable, link, isFiltered, hasNoValue, itemID = GetContainerItemInfo(container, slot)
 
-      if hasNoValue == false then
+      if itemID then
         bagItems[#bagItems + 1] = {                    
           container = container,
           slot = slot,
