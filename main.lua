@@ -1,7 +1,9 @@
 ClassicGuildBank = LibStub("AceAddon-3.0"):NewAddon("ClassicGuildBank", "AceConsole-3.0")
 
 function ClassicGuildBank:OnInitialize()
+  _G.ClassicGuildBank_Deposits = {}
   ClassicGuildBank:RegisterChatCommand('cgb', 'HandleChatCommand');
+  ClassicGuildBank:InitializeInboxButton();
 end
 
 function ClassicGuildBank:HandleChatCommand(input)
@@ -30,6 +32,15 @@ function ClassicGuildBank:HandleChatCommand(input)
       exportString = exportString .. '[' .. bagItems[i].container .. ',' .. bagItems[i].slot .. ',' .. bagItems[i].itemID .. ',' .. bagItems[i].count .. '];'
   end
 
+  local deposits = _G.ClassicGuildBank_Deposits 
+  if #deposits > 0 then
+    exportString  = exportString .. '[DEPOSITS]'
+    for j=1, #deposits do
+      exportString = exportString .. '[' .. deposits[j].sender .. ',' .. deposits[j].itemId .. ',' .. deposits[j].quantity .. ',' .. deposits[j].money .. '];'
+    end
+
+    _G.ClassicGuildBank_Deposits = {}
+  end
   ClassicGuildBank:DisplayExportString(exportString)
 
 end
@@ -147,4 +158,85 @@ function ClassicGuildBank:encode( str )
 		t[k] = char(encoder[extract(v,18,6)], encoder[extract(v,12,6)], encoder[64], encoder[64])
 	end
 	return concat( t )
+end
+
+function ClassicGuildBank:InitializeInboxButton()
+  local btn = CreateFrame('Button', nil, InboxFrame, 'UIPanelButtonTemplate')
+  btn:SetPoint('BOTTOM', -10, 460)
+  btn:SetText('CGB Read Deposits')
+  btn:SetWidth(130)
+	btn:SetHeight(25)
+  btn:SetScript('OnClick', function()
+    ClassicGuildBank:ImportMail()
+  end)
+end
+
+function ClassicGuildBank:ImportMail()
+  ClassicGuildBank:Print(DEFAULT_CHAT_FRAME, 'Importing Mail Deposits')
+  local numMessages = 0
+  local numItems = 0
+
+  local numMail = GetInboxNumItems()  
+  if numMail > 0 then
+    
+    for mail=1, numMail do
+      local _, _, sender, _, money, COD, _, hasItem, wasRead, _, _, _, GM = GetInboxHeaderInfo(mail)
+      
+      --if the item was read CGB already tracked it
+      if not wasRead and ClassicGuildBank:SenderInGuild( sender ) then
+        numMessages = numMessages + 1
+
+        if money > 0 then 
+          ClassicGuildBank:TrackDeposit(sender, -1, -1, money)
+          --TakeInboxMoney(mail)
+        end
+
+        for item=1, ATTACHMENTS_MAX_RECEIVE do
+          local itemName, itemId, _, count, _, _ = GetInboxItem(mail, item)
+          if itemName then 
+            numItems = numItems + 1
+            ClassicGuildBank:TrackDeposit(sender, itemId, count, 0)
+            GetInboxText(mail, item)
+            --TakeInboxItem(mail, item)
+          end
+        end
+      end
+    end
+  end
+  
+  ClassicGuildBank:Print('Recorded ' .. numItems .. ' item deposits in ' .. numMessages .. ' messages from guild members.')
+  ClassicGuildBank:Print('These deposits will be exported the next time you run the /cgb command')
+end
+
+function ClassicGuildBank:SenderInGuild( senderName )
+  if not IsInGuild() then
+    return false
+  end
+
+  GuildRoster()
+  local playerName = UnitName('player')
+  ClassicGuildBank:Print('Player ' .. playerName )
+  
+  local numTotalMembers = GetNumGuildMembers();
+  for guild=1, numTotalMembers do 
+    local name = GetGuildRosterInfo(guild)
+    if name == senderName then
+      return true
+    end
+  end
+
+  return false
+end
+
+function ClassicGuildBank:TrackDeposit(sender, itemId, quantity, money)
+  local deposits = _G.ClassicGuildBank_Deposits 
+  local index = #deposits + 1
+
+  --ClassicGuildBank:Print(sender .. ' ' .. itemId .. ' ' .. quantity .. ' ' .. money)
+  deposits[index] = {
+    sender = sender,
+    itemId = itemId,
+    quantity = quantity,
+    money = money
+  }
 end
