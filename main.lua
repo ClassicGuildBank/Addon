@@ -374,7 +374,7 @@ function ClassicGuildBank:SenderInGuild( senderName )
     end
   end
 
-  return true
+  return false
 end
 
 function ClassicGuildBank:TrackDeposit(sender, itemId, quantity, money)
