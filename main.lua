@@ -1,12 +1,27 @@
-ClassicGuildBank = LibStub("AceAddon-3.0"):NewAddon("ClassicGuildBank", "AceConsole-3.0")
+
+ClassicGuildBank = LibStub("AceAddon-3.0"):NewAddon("ClassicGuildBank", "AceConsole-3.0", "AceEvent-3.0")
+
+local defaults = {
+  profile = {
+      deposits = {},
+      history = {}
+  },
+}
 
 function ClassicGuildBank:OnInitialize()
-  _G.ClassicGuildBank_Deposits = {}
+  
+  self.db = LibStub("AceDB-3.0"):New("ClassicGuildBankDb", defaults)
+
   ClassicGuildBank:RegisterChatCommand('cgb', 'HandleChatCommand');
-  ClassicGuildBank:InitializeInboxButton();
+  ClassicGuildBank:RegisterChatCommand('cgb-deposit', 'HandleDepositCommand')
+  ClassicGuildBank:RegisterChatCommand('cgb-history', 'HandleHistoryCommand')
+
+  ClassicGuildBank:RegisterEvent('MAIL_SHOW');
+  ClassicGuildBank:RegisterEvent('MAIL_CLOSED');
 end
 
-function ClassicGuildBank:HandleChatCommand(input)
+function ClassicGuildBank:HandleChatCommand(input)  
+
   local bags = ClassicGuildBank:GetBags()
   local bagItems = ClassicGuildBank:GetBagItems()
 
@@ -32,17 +47,126 @@ function ClassicGuildBank:HandleChatCommand(input)
       exportString = exportString .. '[' .. bagItems[i].container .. ',' .. bagItems[i].slot .. ',' .. bagItems[i].itemID .. ',' .. bagItems[i].count .. '];'
   end
 
-  local deposits = _G.ClassicGuildBank_Deposits 
+  local deposits = self.db.profile.deposits 
   if #deposits > 0 then
     exportString  = exportString .. '[DEPOSITS]'
     for j=1, #deposits do
       exportString = exportString .. '[' .. deposits[j].sender .. ',' .. deposits[j].itemId .. ',' .. deposits[j].quantity .. ',' .. deposits[j].money .. '];'
     end
 
-    _G.ClassicGuildBank_Deposits = {}
+    tinsert(self.db.profile.history, 1, { date=date(), deposits=self.db.profile.deposits});
+    self.db.profile.deposits = {}
   end
   ClassicGuildBank:DisplayExportString(exportString)
 
+end
+
+function ClassicGuildBank:HandleDepositCommand(input)
+  local args = {}
+  for s in string.gmatch(input, "%S+") do
+    args[#args+1] = s
+  end
+
+  if #args == 0 then
+    local deposits = self.db.profile.deposits
+    ClassicGuildBank:Print( #deposits .. ' item deposits waiting to be exported.  These will be included the next time you run the /cgb command.')
+    return
+  elseif #args == 1 then
+    local arg = args[1]
+
+    if arg == '-h' or arg == '-help' then
+      ClassicGuildBank:Print('Classic Guild Bank Deposit Help:')
+      ClassicGuildBank:Print('No argument    -- Lists out the number of deposits awaiting export')
+      ClassicGuildBank:Print('-v or -verbose -- Lists out the deposits awaiting export including item name and sender')
+      ClassicGuildBank:Print('-clear         -- Removes all deposits waiting to be exported')
+      return
+    end
+
+    if arg == '-v' or arg == '-verbose' then
+      local deposits = self.db.profile.deposits
+      for i=1, #deposits do
+        local dep = deposits[i]
+        local itemName, itemLink = GetItemInfo(dep.itemId)
+        ClassicGuildBank:Print( dep.sender .. ' Deposited - ' .. dep.quantity .. ' ' .. itemLink )
+      end
+      return
+    end
+
+    if arg == '-clear' then
+      self.db.profile.deposits = {}
+      ClassicGuildBank:Print('Deposits Cleared');
+      return
+    end
+
+  end
+
+end
+
+function ClassicGuildBank:HandleHistoryCommand(input)
+  local args = {}
+  for s in string.gmatch(input, "%S+") do
+    args[#args+1] = s
+  end
+
+  local history = self.db.profile.history
+  if #args == 0 then
+    ClassicGuildBank:Print( #history .. ' deposit history entries. typing /cgb-history -[number: 1, 2,3] will display detailed information about that entry')
+    return
+
+  elseif #args == 1 then
+    local numArg = tonumber(args[1])
+    if numArg == nil then
+      ClassicGuildBank:Print('/cgb-history requires its first argument to be a number')
+      return
+    end
+
+    local histNum = math.abs(numArg)
+    
+    if histNum > #history then
+      ClassicGuildBank:Print( 'Argument: ' .. args[1] .. ' is larger than the bounds of the history table')
+      return
+    end
+    
+    local entry = history[histNum];
+    
+    ClassicGuildBank:Print( 'Entry was added on: ' .. entry.date .. '\n Entry contains ' .. #entry.deposits .. 'Deposits \n Re run this command with the -load argument to load them to be exported.' )
+  elseif #args == 2 and args[2] == '-load' then
+
+    local numArg = tonumber(args[1])
+    if numArg == nil then
+      ClassicGuildBank:Print('/cgb-history requires its first argument to be a number')
+      return
+    end
+
+    local histNum = math.abs(numArg)
+    
+    if histNum > #history then
+      ClassicGuildBank:Print( 'Argument: ' .. args[1] .. ' is larger than the bounds of the history table')
+      return
+    end
+    
+    local entry = history[histNum];
+    ClassicGuildBank:Print( #entry.deposits .. ' Deposits have been added to the deposits awaiting export. Run /cgb to export these deposits' )
+
+    for i=1, #entry.deposits do
+      local deposits = self.db.profile.deposits
+      deposits[#deposits + 1] = entry.deposits[i]
+    end
+
+    
+  elseif #args == 2 and args[2] == '-clear' then
+    local histNum = math.abs(tonumber(args[1]))
+    
+    if histNum > #history then
+      ClassicGuildBank:Print( 'Argument: ' .. args[1] .. ' is larger than the bounds of the history table')
+      return
+    end
+    
+    local entry = history[histNum];
+    ClassicGuildBank:Print( 'History entry from ' .. entry.date .. ' with ' .. #entry.deposits .. ' deposits has been deleted.')
+    tremove(history, histNum)
+  end
+  
 end
 
 function ClassicGuildBank:GetBags()
@@ -88,7 +212,7 @@ function ClassicGuildBank:DisplayExportString(exportString)
   CgbFrame:Show();
   CgbFrameScroll:Show()
   CgbFrameScrollText:Show()
-  CgbFrameScrollText:SetText(encoded)
+  CgbFrameScrollText:SetText(exportString)
   CgbFrameScrollText:HighlightText()
   
   CgbFrameButton:SetScript("OnClick", function(self)
@@ -171,41 +295,67 @@ function ClassicGuildBank:InitializeInboxButton()
   end)
 end
 
-function ClassicGuildBank:ImportMail()
-  ClassicGuildBank:Print(DEFAULT_CHAT_FRAME, 'Importing Mail Deposits')
-  local numMessages = 0
-  local numItems = 0
+local UPDATE_LOCK = false
+local timer = nil
+function ClassicGuildBank:MAIL_INBOX_UPDATE()
 
-  local numMail = GetInboxNumItems()  
-  if numMail > 0 then
-    
-    for mail=1, numMail do
-      local _, _, sender, _, money, COD, _, hasItem, wasRead, _, _, _, GM = GetInboxHeaderInfo(mail)
-      
-      --if the item was read CGB already tracked it
-      if not wasRead and ClassicGuildBank:SenderInGuild( sender ) then
-        numMessages = numMessages + 1
+  if UPDATE_LOCK then
+    return
+  end
 
-        if money > 0 then 
-          ClassicGuildBank:TrackDeposit(sender, -1, -1, money)
-          --TakeInboxMoney(mail)
-        end
+  
+  if timer ~= nil then
+    timer:Cancel()
+    return
+  end
 
-        for item=1, ATTACHMENTS_MAX_RECEIVE do
-          local itemName, itemId, _, count, _, _ = GetInboxItem(mail, item)
-          if itemName then 
-            numItems = numItems + 1
-            ClassicGuildBank:TrackDeposit(sender, itemId, count, 0)
-            GetInboxText(mail, item)
-            --TakeInboxItem(mail, item)
+  timer = C_Timer.NewTimer(1, function()
+    local numMail = GetInboxNumItems()
+    local numMessages = 0
+    local numItems = 0
+
+    if not UPDATE_LOCK and numMail > 0 then 
+      UPDATE_LOCK = true;
+      for mail=1, numMail do
+        local _, _, sender, _, money, COD, _, hasItem, wasRead, _, _, _, GM = GetInboxHeaderInfo(mail)
+        
+        --if the item was read CGB already tracked it
+        if not wasRead and ClassicGuildBank:SenderInGuild( sender ) then
+          numMessages = numMessages + 1
+
+          if money > 0 then 
+            ClassicGuildBank:TrackDeposit(sender, -1, -1, money)
+          end
+
+          for item=1, ATTACHMENTS_MAX_RECEIVE do
+            local itemName, itemId, _, count, _, _ = GetInboxItem(mail, item)
+            if itemName then 
+              numItems = numItems + 1
+              ClassicGuildBank:TrackDeposit(sender, itemId, count, 0)
+              GetInboxText(mail, item)
+            end
           end
         end
       end
+      
+      
+      if numItems > 0 then 
+        ClassicGuildBank:Print('Recorded ' .. numItems .. ' item deposits in ' .. numMessages .. ' messages from guild members.')
+        ClassicGuildBank:Print('These deposits will be exported the next time you run the /cgb command')
+      end
+
     end
-  end
+  end)
   
-  ClassicGuildBank:Print('Recorded ' .. numItems .. ' item deposits in ' .. numMessages .. ' messages from guild members.')
-  ClassicGuildBank:Print('These deposits will be exported the next time you run the /cgb command')
+end
+
+function ClassicGuildBank:MAIL_SHOW()
+  ClassicGuildBank:RegisterEvent('MAIL_INBOX_UPDATE');
+end
+
+function ClassicGuildBank:MAIL_CLOSED()
+  UPDATE_LOCK = false;
+  ClassicGuildBank:UnregisterEvent('MAIL_INBOX_UPDATE');
 end
 
 function ClassicGuildBank:SenderInGuild( senderName )
@@ -215,9 +365,8 @@ function ClassicGuildBank:SenderInGuild( senderName )
 
   GuildRoster()
   local playerName = UnitName('player')
-  ClassicGuildBank:Print('Player ' .. playerName )
-  
   local numTotalMembers = GetNumGuildMembers();
+
   for guild=1, numTotalMembers do 
     local name = GetGuildRosterInfo(guild)
     if name == senderName then
@@ -225,15 +374,13 @@ function ClassicGuildBank:SenderInGuild( senderName )
     end
   end
 
-  return false
+  return true
 end
 
 function ClassicGuildBank:TrackDeposit(sender, itemId, quantity, money)
-  local deposits = _G.ClassicGuildBank_Deposits 
-  local index = #deposits + 1
+  local index = #self.db.profile.deposits + 1
 
-  --ClassicGuildBank:Print(sender .. ' ' .. itemId .. ' ' .. quantity .. ' ' .. money)
-  deposits[index] = {
+  self.db.profile.deposits[index] = {
     sender = sender,
     itemId = itemId,
     quantity = quantity,
