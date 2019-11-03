@@ -8,7 +8,6 @@ local defaults = {
 }
 
 function ClassicGuildBank:OnInitialize()
-
   self.db = LibStub("AceDB-3.0"):New("ClassicGuildBankDb", defaults)
 
   ClassicGuildBank:RegisterChatCommand('cgb', 'HandleChatCommand');
@@ -16,8 +15,8 @@ function ClassicGuildBank:OnInitialize()
   ClassicGuildBank:RegisterChatCommand('cgb-history', 'HandleHistoryCommand')
 
   ClassicGuildBank:InitializeInboxButton();
-  
   ClassicGuildBank:RegisterEvent('MAIL_SHOW');
+
 end
 
 function ClassicGuildBank:HandleChatCommand(input)  
@@ -86,12 +85,14 @@ function ClassicGuildBank:HandleDepositCommand(input)
       local deposits = self.db.profile.deposits
       for i=1, #deposits do
         local dep = deposits[i]
+
         if dep.itemId == -1 then
           ClassicGuildBank:Print( dep.sender .. ' Deposited - ' .. GetCoinText(dep.money, ",") )
         else 
           local itemName, itemLink = GetItemInfo(dep.itemId)
           ClassicGuildBank:Print( dep.sender .. ' Deposited - ' .. dep.quantity .. ' ' .. itemLink )
         end
+
       end
       return
     end
@@ -220,7 +221,7 @@ function ClassicGuildBank:DisplayExportString(exportString)
   CgbFrame:Show();
   CgbFrameScroll:Show()
   CgbFrameScrollText:Show()
-  CgbFrameScrollText:SetText(encoded)
+  CgbFrameScrollText:SetText(exportString)
   CgbFrameScrollText:HighlightText()
   
   CgbFrameButton:SetScript("OnClick", function(self)
