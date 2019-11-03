@@ -1,8 +1,8 @@
 ## Interface: 11302
 ## Title: ClassicGuildBank
 ## Notes: Constructs ClassicGuildBank export strings
-## Author: Rumjugs
-## Version: 1.2
+## Author: Rumjugs, Skorppio
+## Version: 1.3
 ## SavedVariables: ClassicGuildBankDb
 
 libs\LibStub\LibStub.lua
