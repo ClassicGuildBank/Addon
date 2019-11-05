@@ -221,7 +221,7 @@ function ClassicGuildBank:DisplayExportString(exportString)
   CgbFrame:Show();
   CgbFrameScroll:Show()
   CgbFrameScrollText:Show()
-  CgbFrameScrollText:SetText(exportString)
+  CgbFrameScrollText:SetText(encoded)
   CgbFrameScrollText:HighlightText()
   
   CgbFrameButton:SetScript("OnClick", function(self)
