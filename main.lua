@@ -1,7 +1,7 @@
 ClassicGuildBank = LibStub("AceAddon-3.0"):NewAddon("ClassicGuildBank", "AceConsole-3.0", "AceEvent-3.0")
 
 local defaults = {
-  profile = {
+  char = {
       deposits = {},
       history = {}
   },
@@ -46,15 +46,15 @@ function ClassicGuildBank:HandleChatCommand(input)
       exportString = exportString .. '[' .. bagItems[i].container .. ',' .. bagItems[i].slot .. ',' .. bagItems[i].itemID .. ',' .. bagItems[i].count .. '];'
   end
 
-  local deposits = self.db.profile.deposits 
+  local deposits = self.db.char.deposits 
   if #deposits > 0 then
     exportString  = exportString .. '[DEPOSITS]'
     for j=1, #deposits do
       exportString = exportString .. '[' .. deposits[j].sender .. ',' .. deposits[j].itemId .. ',' .. deposits[j].quantity .. ',' .. deposits[j].money .. '];'
     end
 
-    tinsert(self.db.profile.history, 1, { date=date(), deposits=self.db.profile.deposits});
-    self.db.profile.deposits = {}
+    tinsert(self.db.char.history, 1, { date=date(), deposits=self.db.char.deposits});
+    self.db.char.deposits = {}
   end
   ClassicGuildBank:DisplayExportString(exportString)
 
@@ -67,7 +67,7 @@ function ClassicGuildBank:HandleDepositCommand(input)
   end
 
   if #args == 0 then
-    local deposits = self.db.profile.deposits
+    local deposits = self.db.char.deposits
     ClassicGuildBank:Print( #deposits .. ' item deposits waiting to be exported.  These will be included the next time you run the /cgb command.')
     return
   elseif #args == 1 then
@@ -82,7 +82,7 @@ function ClassicGuildBank:HandleDepositCommand(input)
     end
 
     if arg == '-v' or arg == '-verbose' then
-      local deposits = self.db.profile.deposits
+      local deposits = self.db.char.deposits
       for i=1, #deposits do
         local dep = deposits[i]
 
@@ -98,7 +98,7 @@ function ClassicGuildBank:HandleDepositCommand(input)
     end
 
     if arg == '-clear' then
-      self.db.profile.deposits = {}
+      self.db.char.deposits = {}
       ClassicGuildBank:Print('Deposits Cleared');
       return
     end
@@ -113,7 +113,7 @@ function ClassicGuildBank:HandleHistoryCommand(input)
     args[#args+1] = s
   end
 
-  local history = self.db.profile.history
+  local history = self.db.char.history
   if #args == 0 then
     ClassicGuildBank:Print( #history .. ' deposit history entries. typing /cgb-history -[number: 1, 2, 3] will display detailed information about that entry.')
     return
@@ -154,7 +154,7 @@ function ClassicGuildBank:HandleHistoryCommand(input)
     ClassicGuildBank:Print( #entry.deposits .. ' Deposits have been added to the deposits awaiting export. Run /cgb to export these deposits' )
 
     for i=1, #entry.deposits do
-      local deposits = self.db.profile.deposits
+      local deposits = self.db.char.deposits
       deposits[#deposits + 1] = entry.deposits[i]
     end
 
@@ -373,7 +373,7 @@ end
 function ClassicGuildBank:IsNewDeposit(uid)
   local returnValue = true;
 
-  local deposits = self.db.profile.deposits
+  local deposits = self.db.char.deposits
   for i=1, #deposits do
     local dep = deposits[i]
 
@@ -382,12 +382,16 @@ function ClassicGuildBank:IsNewDeposit(uid)
     end
   end
 
-  local history = self.db.profile.history
+  local history = self.db.char.history
   for i=1, #history do
-    local hist = history[i]
+    local historyDeposits = history[i].deposits
 
-    if hist.uid == uid then
-      returnValue = false
+    for j=1, # historyDeposits do
+      local historyDeposit = historyDeposits[i]
+
+      if historyDeposit.uid == uid then
+        returnValue = false
+      end
     end
   end
 
@@ -395,9 +399,9 @@ function ClassicGuildBank:IsNewDeposit(uid)
 end
 
 function ClassicGuildBank:TrackDeposit(sender, itemId, quantity, money, uid)
-  local index = #self.db.profile.deposits + 1
+  local index = #self.db.char.deposits + 1
 
-  self.db.profile.deposits[index] = {
+  self.db.char.deposits[index] = {
     sender = sender,
     itemId = itemId,
     quantity = quantity,
