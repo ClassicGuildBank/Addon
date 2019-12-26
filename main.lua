@@ -386,8 +386,8 @@ function ClassicGuildBank:IsNewDeposit(uid)
   for i=1, #history do
     local historyDeposits = history[i].deposits
 
-    for j=1, # historyDeposits do
-      local historyDeposit = historyDeposits[i]
+    for j=1, #historyDeposits do
+      local historyDeposit = historyDeposits[j]
 
       if historyDeposit.uid == uid then
         returnValue = false
