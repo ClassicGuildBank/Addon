@@ -302,6 +302,13 @@ function ClassicGuildBank:InitializeInboxButton()
   btn:SetScript('OnClick', function()
     ClassicGuildBank:SendDeposit()
   end)
+  btn:SetScript('OnEvent', function(__, event)
+    if (event == "PLAYER_LOGIN" and CT_MailMod and CT_MailMod.requestAddOnConflictResolution) then
+      -- asks CT_MailMod to make some room so the button can fit.
+      CT_MailMod:requestAddOnConflictResolution("ClassicGuildBank", 1, btn)
+    end
+  end)
+  btn:RegisterEvent("PLAYER_LOGIN");
 end
 
 function ClassicGuildBank:SendDeposit()
