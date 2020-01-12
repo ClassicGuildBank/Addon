@@ -50,7 +50,13 @@ function ClassicGuildBank:HandleChatCommand(input)
   if #deposits > 0 then
     exportString  = exportString .. '[DEPOSITS]'
     for j=1, #deposits do
-      exportString = exportString .. '[' .. deposits[j].sender .. ',' .. deposits[j].itemId .. ',' .. deposits[j].quantity .. ',' .. deposits[j].money .. '];'
+      local sender = deposits[j].sender;
+
+      if sender == nil then
+        sender = 'Unkown Sender'
+      end
+
+      exportString = exportString .. '[' .. sender .. ',' .. deposits[j].itemId .. ',' .. deposits[j].quantity .. ',' .. deposits[j].money .. '];'
     end
 
     tinsert(self.db.char.history, 1, { date=date(), deposits=self.db.char.deposits});
